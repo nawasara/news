@@ -1,0 +1,25 @@
+{
+    "name": "nawasara/news",
+    "description": "Mirrors news articles from the Ponorogo WordPress site into Nawasara and exposes a public, no-auth read API for client apps (Android/iOS).",
+    "type": "library",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.2",
+        "livewire/livewire": "^3.0",
+        "spatie/laravel-permission": "^6.0",
+        "nawasara/ui": "^0.1 || dev-main",
+        "nawasara/sync": "^0.1.3 || dev-main"
+    },
+    "autoload": {
+        "psr-4": {
+            "Nawasara\\News\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Nawasara\\News\\NewsServiceProvider"
+            ]
+        }
+    }
+}
