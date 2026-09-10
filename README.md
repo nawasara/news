@@ -122,10 +122,33 @@ aplikasi tidak kebetulan sama persis dengan zona waktu situs.
 `date_gmt` juga tanpa penanda, tetapi memang UTC, sehingga huruf `Z`
 ditambahkan agar Carbon menguraikannya tanpa menebak.
 
+## Batas laju dipisah dari API lain — dan alasannya
+
+`rate_limit_per_minute` di config paket ini **sengaja tidak memakai**
+`nawasara-api.rate_limit.per_minute`, dan bawaannya jauh lebih longgar (300).
+
+Throttle Laravel menghitung per kunci, dan pada route yang tidak memeriksa
+token kuncinya adalah **alamat IP**. Ponsel di jaringan seluler tidak punya IP
+publik sendiri: ratusan ribu pelanggan satu operator keluar lewat segelintir
+alamat NAT, sehingga dari sisi server mereka tampak sebagai satu pengunjung dan
+berbagi satu jatah.
+
+Dengan 60 seperti API lainnya, beberapa puluh warga yang membuka SuperApps
+bersamaan sudah cukup membuat sisanya menerima 429 — dan yang mereka lihat
+hanya "gagal memuat". Keluhannya berbunyi *"kadang bisa kadang tidak"*, dan
+tidak dapat ditiru dari kantor, yang IP-nya sendiri dan lengang.
+
+Angkanya dipisah, bukan menaikkan yang global, karena yang dilindungi di sini
+hanya artikel yang memang boleh dibaca siapa saja. Endpoint lain menulis data
+dan memegang token — keduanya pantas tetap ketat.
+
+> Naikkan bila datang laporan "berita gagal dimuat" berkelompok dari daerah
+> yang sama; itu tanda batas ini yang tercapai, bukan gangguan jaringan.
+
 ## Endpoint publik
 
 Tanpa token, tanpa scope, tanpa login. Dibatasi hanya oleh throttle
-(`nawasara-api.rate_limit.per_minute`).
+(`nawasara-news.rate_limit_per_minute`, bawaan 300/menit per IP).
 
 | Endpoint | Keterangan |
 |---|---|

@@ -83,7 +83,25 @@ class NewsServiceProvider extends ServiceProvider
         }
 
         $prefix = (string) config('nawasara-api.route.prefix', 'api/v1').'/news';
-        $perMinute = (int) config('nawasara-api.rate_limit.per_minute', 60);
+
+        // ⚠️ Batas laju SENDIRI, bukan `nawasara-api.rate_limit.per_minute`.
+        //
+        // Throttle Laravel menghitung per KUNCI, dan pada route tanpa
+        // pemeriksaan token kuncinya adalah alamat IP. Ponsel di jaringan
+        // seluler tidak punya IP publik sendiri — ratusan ribu pelanggan satu
+        // operator keluar lewat segelintir alamat NAT, sehingga dari sisi
+        // server mereka tampak sebagai SATU pengunjung dan berbagi satu jatah.
+        //
+        // Dengan 60 seperti API lainnya, beberapa puluh warga yang membuka
+        // SuperApps bersamaan sudah cukup membuat sisanya menerima 429. Yang
+        // mereka lihat hanya "gagal memuat", dan keluhannya berbunyi "kadang
+        // bisa kadang tidak" — tidak dapat ditiru dari kantor, yang IP-nya
+        // sendiri dan lengang.
+        //
+        // Angkanya dipisah, bukan menaikkan yang global, karena yang dilindungi
+        // di sini hanya artikel yang memang boleh dibaca siapa saja. Endpoint
+        // lain menulis data dan memegang token — keduanya pantas tetap ketat.
+        $perMinute = (int) config('nawasara-news.rate_limit_per_minute', 300);
 
         Route::prefix($prefix)
             ->middleware(['api', "throttle:{$perMinute},1"])
