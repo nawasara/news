@@ -6,13 +6,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Allow-list resource for GET /api/v1/news/articles (list).
+ * Daftar-izin untuk GET /api/v1/news/articles.
  *
- * Blocked and why:
- *   - `id`          — internal PK, never leaves the system; lookup is by `slug`.
- *   - `wp_id`        — internal sync key, meaningless to API consumers.
- *   - `category_id`  — internal FK; consumers get the resolved category object.
- *   - `created_at` / `updated_at` — sync bookkeeping, not editorial dates.
+ * Sengaja ditulis sebagai daftar KOLOM YANG BOLEH KELUAR, bukan membuang
+ * beberapa dari toArray(): dengan daftar-larang, setiap kolom baru di masa
+ * depan otomatis ikut terkirim, termasuk yang tidak seharusnya.
+ *
+ * Yang ditahan dan alasannya:
+ *   - `id`, `wp_id`, `source_id`, `category_id` — kunci internal; pencarian
+ *     dari luar memakai `slug`.
+ *   - `created_at` / `updated_at` — catatan sinkronisasi, bukan tanggal
+ *     redaksional. `published_at` yang bermakna bagi pembaca.
  */
 class ArticleListResource extends JsonResource
 {
@@ -20,14 +24,19 @@ class ArticleListResource extends JsonResource
     {
         return [
             'slug' => $this->slug,
-            'judul' => $this->judul,
-            'ringkasan' => $this->ringkasan,
-            'gambar_sampul' => $this->gambar_sampul,
+            'title' => $this->title,
+            'excerpt' => $this->excerpt,
+            'cover_image' => $this->cover_image,
             'link' => $this->link,
-            'kategori' => $this->whenLoaded('category', fn () => [
-                'slug' => $this->category->slug,
+            'source' => $this->whenLoaded('source', fn () => [
+                'slug' => $this->source->slug,
+                'name' => $this->source->name,
             ]),
-            'tanggal_terbit' => $this->tanggal_terbit
+            'category' => $this->whenLoaded('category', fn () => [
+                'slug' => $this->category->slug,
+                'name' => $this->category->display_name,
+            ]),
+            'published_at' => $this->published_at
                 ?->setTimezone(config('nawasara-news.display_timezone', 'Asia/Jakarta'))
                 ?->toIso8601String(),
         ];

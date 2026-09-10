@@ -7,10 +7,11 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * Thin wrapper around a WordPress site's wp-json REST API. Deliberately
- * generic (base URL is a constructor arg, nothing hardcoded to Ponorogo) so
- * a future second WordPress source can reuse this class as-is — only the
- * Job/base_url differs, per the plan to keep multi-source support cheap.
+ * Pembungkus tipis REST API wp-json milik satu situs WordPress.
+ *
+ * Sengaja generik — base URL adalah argumen konstruktor, tidak ada yang
+ * dipatok ke Ponorogo. Satu instance melayani satu sumber, dan job sync
+ * membuat satu instance per baris `nawasara_news_sources`.
  */
 class WordpressClient
 {
@@ -22,10 +23,12 @@ class WordpressClient
     }
 
     /**
-     * All categories, paginated internally. Returns only wp_id + slug —
-     * that's all the sync job needs.
+     * Semua kategori, dipaginasi di dalam.
      *
-     * @return array<int, array{wp_id: int, slug: string}>
+     * `name` ikut diambil karena itu yang dibaca manusia ("Berita Daerah");
+     * slug dipertahankan sebagai kunci yang stabil untuk penyaringan.
+     *
+     * @return array<int, array{wp_id: int, slug: string, name: ?string}>
      */
     public function getCategories(): array
     {
@@ -44,6 +47,9 @@ class WordpressClient
                 $categories[] = [
                     'wp_id' => (int) $row['id'],
                     'slug' => (string) $row['slug'],
+                    'name' => isset($row['name'])
+                        ? html_entity_decode((string) $row['name'], ENT_QUOTES, 'UTF-8')
+                        : null,
                 ];
             }
 
@@ -59,9 +65,9 @@ class WordpressClient
      * batched media lookup (not one request per post).
      *
      * @return array<int, array{
-     *   wp_id: int, category_wp_id: ?int, judul: string, slug: string,
-     *   ringkasan: ?string, isi_lengkap: string, link: string,
-     *   gambar_sampul: ?array<string, string>, tanggal_terbit: ?string
+     *   wp_id: int, category_wp_id: ?int, title: string, slug: string,
+     *   excerpt: ?string, content: string, link: string,
+     *   cover_image: ?array<string, string>, published_at: ?string
      * }>
      */
     public function getLatestPosts(int $limit): array
@@ -107,19 +113,19 @@ class WordpressClient
                 'category_wp_id' => ! empty($row['categories'])
                     ? (int) $row['categories'][0]
                     : null,
-                'judul' => html_entity_decode(
+                'title' => html_entity_decode(
                     (string) ($row['title']['rendered'] ?? ''),
                     ENT_QUOTES,
                     'UTF-8'
                 ),
                 'slug' => (string) $row['slug'],
-                'ringkasan' => $row['excerpt']['rendered'] ?? null,
-                'isi_lengkap' => (string) ($row['content']['rendered'] ?? ''),
+                'excerpt' => $row['excerpt']['rendered'] ?? null,
+                'content' => (string) ($row['content']['rendered'] ?? ''),
                 'link' => (string) ($row['link'] ?? ''),
-                'gambar_sampul' => $featuredMediaId > 0
+                'cover_image' => $featuredMediaId > 0
                     ? ($coverSizesByMediaId[$featuredMediaId] ?? null)
                     : null,
-                'tanggal_terbit' => isset($row['date_gmt'])
+                'published_at' => isset($row['date_gmt'])
                     // date_gmt has no timezone marker either, but IS UTC —
                     // appending 'Z' makes Carbon parse it unambiguously as
                     // UTC on the way into the dateTime cast, rather than

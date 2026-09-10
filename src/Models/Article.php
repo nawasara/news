@@ -10,27 +10,33 @@ class Article extends Model
     protected $table = 'nawasara_news_articles';
 
     protected $fillable = [
+        'source_id',
         'wp_id',
         'category_id',
-        'judul',
+        'title',
         'slug',
-        'ringkasan',
-        'isi_lengkap',
+        'excerpt',
+        'content',
         'link',
-        'gambar_sampul',
-        'tanggal_terbit',
+        'cover_image',
+        'published_at',
     ];
 
     protected $casts = [
-        'tanggal_terbit' => 'datetime',
-        // Object of sizes: {thumbnail, medium, medium_large, full}. Every
-        // key is guaranteed present with a real URL whenever this whole
-        // value is non-null — see WordpressClient::resolveCoverImages().
-        'gambar_sampul' => 'array',
+        'published_at' => 'datetime',
+        // Objek ukuran: {thumbnail, medium, medium_large, full}. Setiap kunci
+        // dijamin ada dan berisi URL yang benar-benar bekerja selama nilai
+        // keseluruhannya tidak null — lihat WordpressClient::resolveCoverImages().
+        'cover_image' => 'array',
     ];
 
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function source(): BelongsTo
+    {
+        return $this->belongsTo(Source::class);
     }
 }

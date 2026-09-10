@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
-use Nawasara\News\Jobs\SyncNewsFromPonorogoJob;
+use Nawasara\News\Jobs\SyncNewsJob;
 use Symfony\Component\Finder\Finder;
 
 class NewsServiceProvider extends ServiceProvider
@@ -48,8 +48,8 @@ class NewsServiceProvider extends ServiceProvider
             // 7 / ProxmoxServiceProvider: console commands registered via
             // $this->commands() don't reliably surface in the Artisan kernel
             // at scheduler-boot time for packages that boot later.
-            $schedule->call(fn () => SyncNewsFromPonorogoJob::dispatch(triggerSource: 'scheduled'))
-                ->name('nawasara-news:sync-ponorogo')
+            $schedule->call(fn () => SyncNewsJob::dispatch(triggerSource: 'scheduled'))
+                ->name('nawasara-news:sync-articles')
                 ->cron("*/{$interval} * * * *")
                 ->withoutOverlapping(10);
         });

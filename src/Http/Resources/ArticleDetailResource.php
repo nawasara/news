@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Allow-list resource for GET /api/v1/news/articles/{slug} (detail).
- * Same blocked fields as ArticleListResource, plus adds `isi_lengkap`.
+ * Daftar-izin untuk GET /api/v1/news/articles/{slug}.
+ * Kolom yang ditahan sama dengan ArticleListResource, ditambah `content`.
  */
 class ArticleDetailResource extends JsonResource
 {
@@ -15,15 +15,20 @@ class ArticleDetailResource extends JsonResource
     {
         return [
             'slug' => $this->slug,
-            'judul' => $this->judul,
-            'ringkasan' => $this->ringkasan,
-            'isi_lengkap' => $this->isi_lengkap,
-            'gambar_sampul' => $this->gambar_sampul,
+            'title' => $this->title,
+            'excerpt' => $this->excerpt,
+            'content' => $this->content,
+            'cover_image' => $this->cover_image,
             'link' => $this->link,
-            'kategori' => $this->whenLoaded('category', fn () => [
-                'slug' => $this->category->slug,
+            'source' => $this->whenLoaded('source', fn () => [
+                'slug' => $this->source->slug,
+                'name' => $this->source->name,
             ]),
-            'tanggal_terbit' => $this->tanggal_terbit
+            'category' => $this->whenLoaded('category', fn () => [
+                'slug' => $this->category->slug,
+                'name' => $this->category->display_name,
+            ]),
+            'published_at' => $this->published_at
                 ?->setTimezone(config('nawasara-news.display_timezone', 'Asia/Jakarta'))
                 ?->toIso8601String(),
         ];

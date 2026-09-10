@@ -1,6 +1,6 @@
 {
     "name": "nawasara/news",
-    "description": "Mirrors news articles from the Ponorogo WordPress site into Nawasara and exposes a public, no-auth read API for client apps (Android/iOS).",
+    "description": "Menarik artikel berita dari situs-situs WordPress Pemkab Ponorogo ke Nawasara, dan menyediakannya lewat API publik tanpa autentikasi untuk aplikasi klien (Android/iOS).",
     "type": "library",
     "license": "proprietary",
     "require": {

@@ -1,8 +1,13 @@
 <?php
 
 return [
-    // Base URL of the WordPress website to fetch news from.
-    'wp_base_url' => env('NAWASARA_NEWS_WP_BASE_URL', 'https://ponorogo.go.id'),
+    // ⚠️ Alamat situs TIDAK lagi di sini — sumber berita disimpan di tabel
+    // `nawasara_news_sources` dan dikelola staf lewat panel. Menambah situs
+    // baru tidak perlu menunggu pembaruan aplikasi.
+    //
+    // Batas jumlah artikel juga per sumber, bukan satu angka global: situs
+    // kabupaten menerbitkan jauh lebih sering daripada situs dinas, dan
+    // menyamakan keduanya berarti salah satunya pasti keliru.
 
     'wp_http_timeout' => env('NAWASARA_NEWS_WP_HTTP_TIMEOUT', 15),
 
@@ -10,12 +15,9 @@ return [
         'enabled' => env('NAWASARA_NEWS_SCHEDULER_ENABLED', true),
     ],
 
-    // Minutes between scheduled syncs.
+    // Menit antar sinkronisasi terjadwal.
     'sync_interval' => env('NAWASARA_NEWS_SYNC_INTERVAL', 60),
 
-    // Fallback if the nawasara_news_settings row is somehow missing.
-    'default_latest_post_limit' => 50,
-
-    // Human readable timezone for displaying the post date in the frontend.
+    // Zona waktu untuk menampilkan tanggal terbit.
     'display_timezone' => env('NAWASARA_NEWS_DISPLAY_TIMEZONE', 'Asia/Jakarta'),
 ];
