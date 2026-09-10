@@ -6,7 +6,7 @@
         @can('news.source.create')
             <x-nawasara-ui::button color="primary"
                 x-on:click="$dispatch('news-source-create')">
-                <x-lucide-plus class="size-4" />
+                <x-slot:icon><x-lucide-plus class="size-4" /></x-slot:icon>
                 Tambah Sumber
             </x-nawasara-ui::button>
         @endcan

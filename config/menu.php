@@ -24,6 +24,13 @@ return [
                 'permission' => 'news.source.view',
                 'navigate' => true,
             ],
+            [
+                'label' => 'Pengaturan',
+                'icon' => 'lucide-settings',
+                'url' => url($prefix.'/settings'),
+                'permission' => 'news.setting.view',
+                'navigate' => true,
+            ],
         ],
     ],
 ];

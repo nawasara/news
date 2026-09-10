@@ -17,6 +17,8 @@ class PermissionSeeder extends Seeder
             'news.source.update',
             'news.source.delete',
             'news.source.sync',
+            'news.setting.view',
+            'news.setting.update',
         ];
 
         foreach ($permissions as $permission) {

@@ -36,7 +36,7 @@
                 <div class="mt-2 flex items-center gap-2">
                     <x-nawasara-ui::button type="button" color="neutral" variant="outline"
                         wire:click="testConnection" loadingTarget="testConnection">
-                        <x-lucide-plug class="size-4" />
+                        <x-slot:icon><x-lucide-plug class="size-4" /></x-slot:icon>
                         Uji Koneksi
                     </x-nawasara-ui::button>
 

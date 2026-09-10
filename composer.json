@@ -1,19 +1,41 @@
 {
     "name": "nawasara/news",
-    "description": "Menarik artikel berita dari situs-situs WordPress Pemkab Ponorogo ke Nawasara, dan menyediakannya lewat API publik tanpa autentikasi untuk aplikasi klien (Android/iOS).",
+    "description": "News aggregation for the Nawasara superapp framework — mirrors articles from multiple Ponorogo WordPress sites and serves them over a public, no-auth read API for mobile clients.",
     "type": "library",
-    "license": "proprietary",
-    "require": {
-        "php": "^8.2",
-        "livewire/livewire": "^3.0",
-        "spatie/laravel-permission": "^6.0",
-        "nawasara/ui": "^0.1 || dev-main",
-        "nawasara/sync": "*"
+    "license": "MIT",
+    "keywords": [
+        "nawasara",
+        "laravel",
+        "news",
+        "wordpress",
+        "wp-json",
+        "content-sync",
+        "public-api"
+    ],
+    "authors": [
+        {
+            "name": "Pringgo J. Saputro",
+            "email": "odyinggo@gmail.com",
+            "role": "Lead Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/nawasara/news/issues",
+        "source": "https://github.com/nawasara/news"
     },
     "autoload": {
         "psr-4": {
             "Nawasara\\News\\": "src/"
         }
+    },
+    "require": {
+        "php": "^8.1",
+        "illuminate/support": "^10.0|^12.0",
+        "spatie/laravel-permission": "^6.0",
+        "nawasara/core": "*",
+        "nawasara/ui": "*",
+        "nawasara/sync": "*",
+        "livewire/livewire": "^3.0"
     },
     "extra": {
         "laravel": {
@@ -21,5 +43,7 @@
                 "Nawasara\\News\\NewsServiceProvider"
             ]
         }
-    }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
 }

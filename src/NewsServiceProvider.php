@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Nawasara\News\Jobs\SyncNewsJob;
+use Nawasara\News\Services\NewsSettings;
 use Symfony\Component\Finder\Finder;
 
 class NewsServiceProvider extends ServiceProvider
@@ -37,12 +38,12 @@ class NewsServiceProvider extends ServiceProvider
                 return;
             }
 
-            if (! config('nawasara-news.scheduler.enabled', true)) {
+            if (! NewsSettings::schedulerEnabled()) {
                 return;
             }
 
             $schedule = $this->app->make(Schedule::class);
-            $interval = max(1, (int) config('nawasara-news.sync_interval', 15));
+            $interval = NewsSettings::syncInterval();
 
             // $schedule->call(), not $schedule->command() — see guide section
             // 7 / ProxmoxServiceProvider: console commands registered via
@@ -64,17 +65,11 @@ class NewsServiceProvider extends ServiceProvider
      * Still guarded by class_exists() even though nawasara/api IS installed
      * in this monorepo (per root composer.json) — this package should keep
      * working if that ever changes, per every other package's convention.
-     * We borrow two things from nawasara-api's config, nothing else (no
+     *
+     * Only ONE thing is borrowed from nawasara-api: `route.prefix`, so the
+     * news endpoints sit under the same /api/v1 as everything else. No
      * ScopeRegistry call — scopes are meaningless on a route with no token
-     * check):
-     *   - route.prefix — confirmed against the real nawasara-api.php config.
-     *   - rate_limit.per_minute — reused for OUR throttle instead of a
-     *     hardcoded number, so tuning NAWASARA_API_RATE_PER_MINUTE affects
-     *     this route too, consistent with every other API surface in the
-     *     app, even though this route bypasses api.auth/api.citizen
-     *     entirely and isn't actually subject to nawasara-api's per-token
-     *     limiting — it's just borrowing the same config value as a sane
-     *     shared default.
+     * check — and NOT its rate limit either; see the note below.
      */
     protected function registerPublicApiRoutes(): void
     {
@@ -101,7 +96,12 @@ class NewsServiceProvider extends ServiceProvider
         // Angkanya dipisah, bukan menaikkan yang global, karena yang dilindungi
         // di sini hanya artikel yang memang boleh dibaca siapa saja. Endpoint
         // lain menulis data dan memegang token — keduanya pantas tetap ketat.
-        $perMinute = (int) config('nawasara-news.rate_limit_per_minute', 300);
+        //
+        // Dibaca dari panel (halaman Pengaturan Berita), dengan config sebagai
+        // cadangan. Angka ini perlu disetel oleh orang yang MELIHAT keluhannya
+        // masuk, dan menunggu deploy untuk itu berarti aplikasi warga tetap
+        // gagal memuat sepanjang penantian.
+        $perMinute = NewsSettings::rateLimitPerMinute();
 
         Route::prefix($prefix)
             ->middleware(['api', "throttle:{$perMinute},1"])
