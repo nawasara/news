@@ -1,150 +1,149 @@
 # nawasara/news
 
-Menarik artikel berita dari situs-situs WordPress milik Pemerintah Kabupaten
-Ponorogo ke dalam Nawasara, dan menyediakannya lewat API publik tanpa
-autentikasi untuk aplikasi klien — SuperApps (Flutter/Android) yang pertama.
+Pulls news articles from the WordPress sites run by the Ponorogo Regency
+government into Nawasara, and serves them through a public API with no
+authentication for client apps. The SuperApps client (Flutter/Android) is the
+first consumer.
 
-Bekerja bersama `nawasara/ui` (tampilan panel), `nawasara/core` (penyimpanan
-setelan), `nawasara/sync` (kerangka job sinkronisasi), dan `nawasara/api`
-(awalan route `/api/v1`).
+Works together with `nawasara/ui` (the panel views), `nawasara/core` (settings
+storage), `nawasara/sync` (the sync job framework), and `nawasara/api` (the
+`/api/v1` route prefix).
 
-## Kenapa mencerminkan, bukan menautkan
+## Why mirror instead of link
 
-Aplikasi bisa saja membuka situs WordPress-nya langsung. Yang membuat cara itu
-tidak memadai: setiap OPD punya situsnya sendiri dengan tema, tata letak, dan
-kecepatan yang berbeda-beda, sebagian tanpa versi seluler yang layak. Warga
-yang menekan satu berita akan mendarat di halaman yang bentuknya tak terduga
-dan kadang lambat.
+The app could just open the WordPress site directly. What makes that approach
+inadequate: each OPD has its own site with a different theme, layout, and speed,
+and some have no decent mobile version. A citizen who taps a story lands on a
+page whose shape is unpredictable and sometimes slow.
 
-Dengan mencerminkan, artikel dari semua situs tampil dalam satu bentuk yang
-sama di dalam aplikasi, dapat dicari lintas-situs, dan tetap terbaca meski
-situs asalnya sedang bermasalah. Tautan ke situs asli tetap disertakan bagi
-yang ingin membacanya di sumbernya.
+By mirroring, articles from every site appear in one consistent shape inside the
+app, can be searched across sites, and stay readable even when the source site
+is having trouble. A link to the original site is still included for anyone who
+wants to read it at the source.
 
 ## Status v0.3.0
 
-| Fitur | |
+| Feature | |
 |---|---|
-| Sumber jamak, dikelola lewat panel | ✅ |
-| Halaman Pengaturan (batas laju, jeda sync, timeout) | ✅ |
-| Sinkronisasi terjadwal + manual per sumber | ✅ |
-| Uji koneksi saat menambah sumber | ✅ |
-| API publik: daftar, detail, daftar sumber | ✅ |
-| Saringan sumber & kategori, pencarian judul & kategori | ✅ |
-| Penanda sumber bermasalah beserta pesan galatnya | ✅ |
-| Penyuntingan artikel di Nawasara | ❌ — sengaja; sumbernya WordPress |
-| Notifikasi saat sumber gagal berhari-hari | ⏳ |
-| Menyembunyikan satu artikel dari API publik | ⏳ |
+| Multiple sources, managed from the panel | ready |
+| Settings page (rate limit, sync interval, timeout) | ready |
+| Scheduled sync plus manual sync per source | ready |
+| Connection test when adding a source | ready |
+| Public API: list, detail, source list | ready |
+| Source and category filters, title and category search | ready |
+| Marker for failing sources with their error message | ready |
+| Editing articles inside Nawasara | none, by design; the source is WordPress |
+| Notification when a source fails for days | not built yet |
+| Hiding a single article from the public API | not built yet |
 
-## Keputusan yang mudah dibatalkan tanpa tahu alasannya
+## Design notes
 
-### 1. Sumber dan setelan ada di basis data, bukan config
+### 1. Sources and settings live in the database, not config
 
-Versi pertama memakai satu nilai config, `NAWASARA_NEWS_WP_BASE_URL`. Itu
-berarti menambahkan situs dinas menuntut penyuntingan `.env` dan penerapan
-ulang aplikasi. Padahal yang tahu situs mana yang perlu ditarik adalah staf
-Kominfo, bukan pengembang.
+The first version used a single config value, `NAWASARA_NEWS_WP_BASE_URL`. That
+meant adding an agency site required editing `.env` and redeploying the app. But
+the people who know which sites need pulling are Kominfo staff, not developers.
 
-Hal yang sama berlaku untuk batas laju API. Orang yang melihat keluhan "berita
-gagal dimuat" masuk adalah staf; menunggu jendela deploy untuk menaikkannya
-berarti aplikasi warga tetap gagal sepanjang penantian.
+The same goes for the API rate limit. The person who sees "news failed to load"
+complaints come in is staff; waiting for a deploy window to raise it means the
+citizen app keeps failing the whole time.
 
-Sumber menjadi tabel `nawasara_news_sources` dengan halamannya sendiri. Setelan
-lain masuk `nawasara_settings` (key-value milik `nawasara/core`, sudah
-ber-cache) dengan awalan `news.` — bukan tabel sendiri, karena bentuknya memang
-segelintir angka dan bendera, bukan entitas.
+Sources became the `nawasara_news_sources` table with its own page. Other
+settings go into `nawasara_settings` (the cached key-value store owned by
+`nawasara/core`) under the `news.` prefix, rather than a table of their own,
+because their shape really is a handful of numbers and flags, not an entity.
 
-⚠️ **Config tetap menjadi cadangan, jangan dihapus.** Urutan pembacaan: basis
-data → config → angka bawaan di kode. Pada pemasangan baru tabel setelan masih
-kosong, dan pembacaan pertama terjadi saat ServiceProvider mendaftarkan route —
-sebelum ada kesempatan siapa pun membuka panel. Tanpa cadangan, batas laju
-bernilai nol, `throttle:0,1` menolak setiap permintaan, dan seluruh API berita
-mati pada pemasangan yang tampak berhasil.
+Config stays as a fallback; do not remove it. The read order is: database,
+config, then the built-in defaults in code. On a fresh install the settings
+table is still empty, and the first read happens when the ServiceProvider
+registers routes, before anyone has a chance to open the panel. Without the
+fallback the rate limit is zero, `throttle:0,1` rejects every request, and the
+entire news API is dead on an install that looked successful.
 
-Karena alasan yang sama, `NewsSettings` menolak nilai nol atau negatif meski
-tersimpan di basis data, dan pembacaannya dibungkus `try/catch` — pembacaan
-pertama dapat terjadi sebelum migrasi dijalankan, saat `php artisan migrate`
-sendiri mem-boot aplikasi.
+For the same reason, `NewsSettings` rejects zero or negative values even when
+they are stored in the database, and reads are wrapped in `try/catch`: the first
+read can happen before migrations run, when `php artisan migrate` itself boots
+the app.
 
-⚠️ Menghapus setelan harus lewat **model**, bukan `where(...)->delete()`.
-`Setting` membersihkan cache-nya di event `deleted`, dan event itu hanya menyala
-untuk instance model. Penghapusan massal melewatinya: barisnya hilang, tetapi
-nilai lama tetap terbaca dari cache selama satu jam — tombol "Kembalikan
-Bawaan" akan tampak tidak berfungsi sama sekali.
+Deleting a setting must go through the **model**, not `where(...)->delete()`.
+`Setting` clears its cache on the `deleted` event, and that event only fires for
+model instances. A mass delete skips it: the row is gone, but the old value
+keeps being read from cache for an hour, so the "Restore Defaults" button looks
+like it does nothing at all.
 
-### 2. Keunikan `wp_id` dan `slug` adalah PER SUMBER
+### 2. `wp_id` and `slug` uniqueness is per source
 
-Setiap instalasi WordPress menomori kategori dan postingnya sendiri mulai dari
-1. Situs dinas hampir pasti punya kategori ber-`wp_id` 1, sama seperti situs
-kabupaten. Begitu pula slug: "hut-ri-ke-81" diterbitkan hampir semua situs
-pemerintah pada hari yang sama.
+Each WordPress install numbers its own categories and posts starting from 1. An
+agency site almost certainly has a category with `wp_id` 1, the same as the
+regency site. Slugs are the same: "hut-ri-ke-81" is published by nearly every
+government site on the same day.
 
-Keunikan global — yang benar sewaktu hanya ada satu sumber — akan membuat
-sinkronisasi situs kedua **menimpa** baris situs pertama alih-alih membuat
-baris baru. Bentuk kegagalannya diam: tidak ada galat, hanya artikel yang
-berubah isinya sendiri.
+Global uniqueness (which was correct when there was only one source) would make
+a second site's sync **overwrite** the first site's rows instead of creating new
+ones. The failure is silent: no error, just articles whose content changes on
+its own.
 
 ```php
 $table->unique(['source_id', 'wp_id']);
 $table->unique(['source_id', 'slug']);
 ```
 
-Peta kategori di `SyncNewsJob::writeArticles()` juga disaring
-`where('source_id', ...)` sebelum dipakai. Uji regresinya ada di
-`tests/MultiSourceIsolationTest.php`, dan kasusnya terbukti pada data nyata:
-ponorogo.go.id dan dinsos.ponorogo.go.id punya satu kategori dengan `wp_id`
-yang sama persis.
+The category map in `SyncNewsJob::writeArticles()` is also filtered by
+`where('source_id', ...)` before use. The regression test is in
+`tests/MultiSourceIsolationTest.php`, and the case is proven on real data:
+ponorogo.go.id and dinsos.ponorogo.go.id each have a category with the exact
+same `wp_id`.
 
-### 3. Artikel lama TIDAK dihapus
+### 3. Old articles are not deleted
 
-Versi pertama menghapus artikel yang tidak muncul di N terbaru, agar Nawasara
-"sama persis" dengan WordPress. Akibatnya arsip berita menyusut diam-diam:
-menaikkan batas jumlah tidak mengembalikan yang sudah hilang, dan tautan yang
-sudah dibagikan ke publik mati begitu artikelnya bergeser keluar.
+The first version deleted articles that no longer appeared in the latest N, so
+Nawasara would be an exact copy of WordPress. The effect was that the news
+archive quietly shrank: raising the count limit did not bring back what was
+gone, and links already shared publicly broke once their article slid out of
+range.
 
-Nawasara kini **menumpuk**, bukan mencerminkan. Artikel yang benar-benar
-ditarik turun di WordPress tetap tinggal di sini — itu keputusan sadar, dan
-membuangnya adalah pekerjaan manusia lewat panel, bukan efek samping
-sinkronisasi.
+Nawasara now accumulates rather than mirrors. An article genuinely taken down on
+WordPress stays here. That is a deliberate choice, and removing it is a human
+job through the panel, not a side effect of syncing.
 
-Hal yang sama berlaku untuk kategori: menghapusnya akan memutus `category_id`
-artikel lama hanya karena kategori itu dirapikan di sisi WordPress.
+The same goes for categories: deleting them would break `category_id` on older
+articles just because the category was tidied up on the WordPress side.
 
-Menonaktifkan sumber (`is_active = false`) menghentikan penarikan **tanpa**
-membuang artikel yang sudah ada. Yang membuang adalah menghapus barisnya.
+Deactivating a source (`is_active = false`) stops the pull without removing the
+articles that already exist. Only deleting the row removes them.
 
-### 4. Batas laju dipisah dari API lain, dan jauh lebih longgar
+### 4. The rate limit is separate from other APIs, and much looser
 
-`rate_limit_per_minute` **sengaja tidak memakai**
-`nawasara-api.rate_limit.per_minute`, dengan bawaan 300.
+`rate_limit_per_minute` deliberately does not use
+`nawasara-api.rate_limit.per_minute`, and defaults to 300.
 
-Throttle Laravel menghitung per kunci, dan pada route yang tidak memeriksa
-token kuncinya adalah **alamat IP**. Ponsel di jaringan seluler tidak punya IP
-publik sendiri: ratusan ribu pelanggan satu operator keluar lewat segelintir
-alamat NAT, sehingga dari sisi server mereka tampak sebagai satu pengunjung dan
-berbagi satu jatah.
+Laravel's throttle counts per key, and on a route that does not check a token
+the key is the **IP address**. Phones on a mobile network do not have their own
+public IP: hundreds of thousands of one carrier's subscribers exit through a
+handful of NAT addresses, so from the server's side they look like a single
+visitor sharing a single quota.
 
-Dengan 60 seperti API lainnya, beberapa puluh warga yang membuka SuperApps
-bersamaan sudah cukup membuat sisanya menerima 429 — dan yang mereka lihat
-hanya "gagal memuat". Keluhannya berbunyi *"kadang bisa kadang tidak"*, dan
-tidak dapat ditiru dari kantor, yang IP-nya sendiri dan lengang.
+At 60, like the other APIs, a few dozen citizens opening SuperApps at once is
+enough to make the rest get 429, and all they see is "failed to load". The
+complaint sounds like *"sometimes it works, sometimes it doesn't"*, and it
+cannot be reproduced from the office, whose IP is its own and quiet.
 
-Angkanya dipisah, bukan menaikkan yang global, karena yang dilindungi di sini
-hanya artikel yang memang boleh dibaca siapa saja. Endpoint lain menulis data
-dan memegang token — keduanya pantas tetap ketat.
+The number is separate rather than raising the global one, because what is
+protected here is only articles that anyone is allowed to read anyway. Other
+endpoints write data and carry tokens; both deserve to stay strict.
 
-> Naikkan bila datang laporan "berita gagal dimuat" berkelompok dari daerah
-> yang sama; itu tanda batas ini yang tercapai, bukan gangguan jaringan.
+If clustered "news failed to load" reports arrive from the same area, that is a
+sign this limit was reached, not a network problem. Raise it then.
 
-### 5. Tanggal terbit dibaca dari `date_gmt`, bukan `date`
+### 5. Publish date is read from `date_gmt`, not `date`
 
-Kolom `date` milik WordPress adalah waktu lokal situs tanpa penanda zona
-waktu — pada instalasi ini selisihnya sekitar 7 jam dari `date_gmt`.
-Memakainya langsung akan salah baca sebanyak selisih itu bila zona waktu
-aplikasi tidak kebetulan sama persis dengan zona waktu situs.
+WordPress's `date` column is the site's local time with no timezone marker, and
+on this install the difference from `date_gmt` is about 7 hours. Using it
+directly misreads the time by that difference whenever the app's timezone does
+not happen to match the site's exactly.
 
-`date_gmt` juga tanpa penanda, tetapi memang UTC, sehingga huruf `Z`
-ditambahkan agar Carbon menguraikannya tanpa menebak.
+`date_gmt` also has no marker, but it is genuinely UTC, so a `Z` is appended so
+Carbon parses it without guessing.
 
 ## Setup
 
@@ -155,52 +154,54 @@ php artisan db:seed --class="Nawasara\News\Database\Seeders\PermissionSeeder"
 php artisan db:seed --class="Nawasara\News\Database\Seeders\SourceSeeder"
 ```
 
-Daftarkan di `resources/css/app.css` — **tanpa ini seluruh kelas Tailwind di
-blade paket ini tidak ikut dikompilasi**, dan halamannya tampil tanpa gaya:
+Register it in `resources/css/app.css`. Without this, none of the Tailwind
+classes in this package's blades are compiled, and the pages render with no
+styling:
 
 ```css
 @source "../../vendor/nawasara/news";
 ```
 
-Sumber pertama (ponorogo.go.id) dibuat oleh `SourceSeeder`. Sisanya ditambahkan
-staf lewat **Berita → Sumber Berita → Tambah Sumber**; tombol Uji Koneksi
-memastikan alamatnya benar-benar situs WordPress ber-wp-json sebelum disimpan.
+The first source (ponorogo.go.id) is created by `SourceSeeder`. The rest are
+added by staff through **Berita → Sumber Berita → Tambah Sumber**; the Test
+Connection button confirms the address really is a WordPress site with wp-json
+before saving.
 
-### Environment (opsional — semua ada bawaannya)
+### Environment (optional; everything has a default)
 
-| | Bawaan | |
+| | Default | |
 |---|---|---|
-| `NAWASARA_NEWS_RATE_LIMIT_PER_MINUTE` | 300 | Dapat ditimpa dari halaman Pengaturan |
-| `NAWASARA_NEWS_SYNC_INTERVAL` | 60 | Menit antar sinkronisasi |
-| `NAWASARA_NEWS_WP_HTTP_TIMEOUT` | 15 | Detik menunggu situs sumber |
+| `NAWASARA_NEWS_RATE_LIMIT_PER_MINUTE` | 300 | Can be overridden from the Settings page |
+| `NAWASARA_NEWS_SYNC_INTERVAL` | 60 | Minutes between syncs |
+| `NAWASARA_NEWS_WP_HTTP_TIMEOUT` | 15 | Seconds to wait for the source site |
 | `NAWASARA_NEWS_SCHEDULER_ENABLED` | true | |
 | `NAWASARA_NEWS_DISPLAY_TIMEZONE` | Asia/Jakarta | |
 
-## Endpoint publik
+## Public endpoints
 
-Tanpa token, tanpa scope, tanpa login. Dibatasi hanya oleh throttle
-(bawaan 300/menit **per alamat IP**).
+No token, no scope, no login. Limited only by the throttle (default 300/minute
+**per IP address**).
 
-| Endpoint | Keterangan |
+| Endpoint | Notes |
 |---|---|
-| `GET /api/v1/news/articles` | Daftar. Saringan: `?source=`, `?category=`, `?per_page=` (1–100) |
-| `GET /api/v1/news/articles/{slug}` | Detail. Tambahkan `?source=` bila slug-nya bisa berulang antar situs |
-| `GET /api/v1/news/sources` | Daftar sumber, agar klien tak perlu memasang daftar situs secara tetap |
+| `GET /api/v1/news/articles` | List. Filters: `?source=`, `?category=`, `?per_page=` (1-100) |
+| `GET /api/v1/news/articles/{slug}` | Detail. Add `?source=` when the slug can repeat across sites |
+| `GET /api/v1/news/sources` | Source list, so the client does not have to hard-code the site list |
 
-⚠️ Slug hanya unik per sumber. Tanpa `?source=`, endpoint detail menjawab
-dengan artikel **terbit paling akhir** yang slug-nya cocok — perilaku yang
-dipastikan, bukan diserahkan pada urutan basis data.
+Slugs are only unique per source. Without `?source=`, the detail endpoint
+returns the **most recently published** article whose slug matches. That is
+defined behavior, not left to database order.
 
-Resource ditulis sebagai **daftar-izin**: kolom disebutkan satu per satu, bukan
-`toArray()` lalu membuang beberapa. Dengan daftar-larang, setiap kolom baru di
-masa depan otomatis ikut terkirim, termasuk yang tidak seharusnya. `id`,
-`wp_id`, `source_id`, dan `category_id` tidak pernah keluar; `/sources` juga
-tidak membocorkan `base_url` maupun `last_error`.
+The Resource is written as an **allow-list**: columns are named one by one,
+rather than `toArray()` with a few dropped. With a deny-list, every future
+column would be sent automatically, including ones that should not be. `id`,
+`wp_id`, `source_id`, and `category_id` never leave; `/sources` also does not
+leak `base_url` or `last_error`.
 
-### Bentuk `cover_image`
+### The shape of `cover_image`
 
-Bukan satu URL, melainkan objek berisi ukuran-ukuran yang sudah disiapkan
-WordPress, dari terkecil ke terbesar:
+Not a single URL but an object holding the sizes WordPress has already prepared,
+smallest to largest:
 
 ```json
 "cover_image": {
@@ -211,44 +212,43 @@ WordPress, dari terkecil ke terbesar:
 }
 ```
 
-Setiap kunci **dijamin ada dan berisi URL yang bekerja** selama keseluruhan
-nilainya tidak null. Ukuran yang tidak dihasilkan WordPress — karena gambar
-aslinya lebih sempit dari target — diisi dengan ukuran yang lebih BESAR
-terdekat, tidak pernah yang lebih kecil. Jadi klien tidak perlu menyusun
-rantai cadangannya sendiri; gambar bisa tampak lebih berat dari perlunya,
-tetapi tidak pernah pecah.
+Every key is guaranteed to exist and hold a working URL, as long as the whole
+value is not null. A size WordPress did not produce (because the original image
+was narrower than the target) is filled with the nearest **larger** size, never
+a smaller one. So the client does not have to build its own fallback chain; the
+image may look heavier than needed, but it never breaks.
 
-## Model
+## Models
 
 | | |
 |---|---|
-| `Source` | Situs WordPress yang ditarik. `scopeActive()`, `isFailing()` |
-| `Category` | Kategori per sumber. `display_name` jatuh ke slug bila `name` kosong |
-| `Article` | Artikel per sumber. `cover_image` di-cast array |
+| `Source` | A WordPress site being pulled. `scopeActive()`, `isFailing()` |
+| `Category` | Category per source. `display_name` falls back to the slug when `name` is empty |
+| `Article` | Article per source. `cover_image` is cast to an array |
 
 ## Permissions
 
 | | |
 |---|---|
-| `news.article.view` | Melihat daftar & detail artikel |
-| `news.source.view` | Melihat daftar sumber |
-| `news.source.create` | Menambah sumber |
-| `news.source.update` | Mengubah / mengaktifkan / menonaktifkan |
-| `news.source.delete` | Menghapus sumber beserta artikelnya |
-| `news.source.sync` | Menjalankan sinkronisasi manual |
-| `news.setting.view` | Membuka halaman Pengaturan |
-| `news.setting.update` | Menyimpan / mengembalikan setelan |
+| `news.article.view` | View the article list and detail |
+| `news.source.view` | View the source list |
+| `news.source.create` | Add a source |
+| `news.source.update` | Edit / activate / deactivate |
+| `news.source.delete` | Delete a source and its articles |
+| `news.source.sync` | Run a manual sync |
+| `news.setting.view` | Open the Settings page |
+| `news.setting.update` | Save / restore settings |
 
 ## Roadmap
 
-- Notifikasi ketika sebuah sumber gagal berturut-turut (kini hanya tampak
-  sebagai lencana "Bermasalah" di halaman Sumber Berita)
-- Menyembunyikan artikel tertentu dari API publik tanpa menghapusnya
-- Riwayat sinkronisasi per sumber, bukan hanya waktu terakhir
+- Notification when a source fails repeatedly (currently only shown as a
+  "Failing" badge on the Sumber Berita page)
+- Hide a specific article from the public API without deleting it
+- Per-source sync history, not just the last time
 
 ## Author
 
-Pringgo J. Saputro — Dinas Kominfo Kabupaten Ponorogo
+Pringgo J. Saputro, Dinas Kominfo Kabupaten Ponorogo
 
 ## License
 
