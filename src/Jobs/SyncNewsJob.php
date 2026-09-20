@@ -90,6 +90,34 @@ class SyncNewsJob extends AbstractSyncJob
             }
         }
 
+        /*
+         * ⚠️ Dilempar bila TIDAK ADA satu pun sumber yang berhasil.
+         *
+         * Sebelum 20 September 2026 metode ini selalu mengembalikan $total,
+         * jadi AbstractSyncJob menandai jalannya `success` meski setiap sumber
+         * gagal. Riwayat sinkronisasi penuh baris hijau, `sources_failed`
+         * bernilai 1 tiap jam, dan tidak ada satu pun yang memberi tanda.
+         *
+         * Akibatnya nyata: slug sepanjang 200 karakter dari WordPress
+         * menggagalkan seluruh transaksi sumber sejak 17 September, dan baru
+         * ketahuan tiga hari kemudian ketika ada yang menyadari beritanya
+         * tidak bertambah. Kegagalan yang dilaporkan sebagai keberhasilan
+         * lebih buruk daripada kegagalan yang berisik.
+         *
+         * Yang SEBAGIAN gagal tetap `success`: sumber lain sudah tersimpan,
+         * dan `sources_failed` di hasilnya yang menyebutkan sisanya.
+         */
+        if ($total['sources'] === 0 && $total['sources_failed'] > 0) {
+            $penyebab = $sources->pluck('last_error', 'slug')
+                ->filter()
+                ->map(fn ($e, $slug) => "{$slug}: ".mb_substr((string) $e, 0, 200))
+                ->implode(' | ');
+
+            throw new \RuntimeException(
+                "Semua sumber berita gagal ({$total['sources_failed']}). {$penyebab}"
+            );
+        }
+
         return $total;
     }
 

@@ -30,6 +30,38 @@ class WordpressClient
      *
      * @return array<int, array{wp_id: int, slug: string, name: ?string}>
      */
+    /**
+     * Potong slug agar muat di kolom `varchar(191)`.
+     *
+     * Slug datang apa adanya dari WordPress dan tidak dibatasi panjangnya di
+     * sana. Tiga artikel di ponorogo.go.id punya slug 199 sampai 200 karakter,
+     * semuanya judul panjang seperti "nota-kesepakatan-antara-pemerintah-..."
+     * dan "keputusan-bupati-nomor-100-3-3-2-...".
+     *
+     * ⚠️ Akibatnya jauh lebih besar daripada satu artikel yang hilang.
+     * Penulisan dilakukan dalam SATU transaksi per sumber, jadi satu baris
+     * yang terlalu panjang menggagalkan seluruh sumber: sejak 17 September
+     * 2026 tidak ada satu pun artikel baru yang masuk, dan `sources_failed`
+     * terus bernilai 1 selama tiga hari tanpa ada yang menyadarinya.
+     *
+     * Dipotong, bukan dilewati: slug hanya penanda, sedangkan judul dan isinya
+     * tetap utuh. Melewatkan artikelnya berarti berita yang paling resmi
+     * (peraturan, keputusan bupati) justru yang tidak pernah tampil, karena
+     * judul panjang adalah ciri khasnya.
+     *
+     * 191, bukan 255: itu batas aman indeks utf8mb4 di MySQL lama, dan kolom
+     * ini memang ber-indeks unik bersama `source_id`.
+     *
+     * Pemotongan dapat membuat dua slug bertabrakan, tetapi kunci uniknya
+     * `(source_id, wp_id)` untuk artikel, bukan slug, jadi tabrakan tidak
+     * menimpa apa pun. Yang perlu diperhatikan hanya bila kelak slug dipakai
+     * sebagai pencarian publik.
+     */
+    public static function trimSlug(string $slug): string
+    {
+        return mb_substr($slug, 0, 191);
+    }
+
     public function getCategories(): array
     {
         $categories = [];
@@ -46,7 +78,7 @@ class WordpressClient
             foreach ($batch as $row) {
                 $categories[] = [
                     'wp_id' => (int) $row['id'],
-                    'slug' => (string) $row['slug'],
+                    'slug' => self::trimSlug((string) $row['slug']),
                     'name' => isset($row['name'])
                         ? html_entity_decode((string) $row['name'], ENT_QUOTES, 'UTF-8')
                         : null,
@@ -118,7 +150,7 @@ class WordpressClient
                     ENT_QUOTES,
                     'UTF-8'
                 ),
-                'slug' => (string) $row['slug'],
+                'slug' => self::trimSlug((string) $row['slug']),
                 'excerpt' => $row['excerpt']['rendered'] ?? null,
                 'content' => (string) ($row['content']['rendered'] ?? ''),
                 'link' => (string) ($row['link'] ?? ''),
