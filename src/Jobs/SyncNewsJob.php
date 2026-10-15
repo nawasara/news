@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Nawasara\News\Models\Article;
 use Nawasara\News\Models\Category;
 use Nawasara\News\Models\Source;
+use Nawasara\News\Services\ArticleHtmlSanitizer;
 use Nawasara\News\Services\WordpressClient;
 use Nawasara\Sync\Jobs\AbstractSyncJob;
 
@@ -206,8 +207,10 @@ class SyncNewsJob extends AbstractSyncJob
                     'category_id' => $categoryId,
                     'title' => $row['title'],
                     'slug' => $row['slug'],
-                    'excerpt' => $row['excerpt'],
-                    'content' => $row['content'],
+                    // Disimpan sudah bersih (audit keamanan 15 Oktober 2026,
+                    // S9): WP OPD yang disusupi tidak boleh menitipkan skrip.
+                    'excerpt' => ArticleHtmlSanitizer::clean($row['excerpt']),
+                    'content' => (string) ArticleHtmlSanitizer::clean($row['content']),
                     'link' => $row['link'],
                     'cover_image' => $row['cover_image'],
                     'published_at' => $row['published_at'],

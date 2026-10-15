@@ -143,15 +143,17 @@
 
             @if ($artikel->excerpt)
                 <p class="text-sm italic text-neutral-600 dark:text-neutral-300 mb-4">
-                    {!! strip_tags($artikel->excerpt) !!}
+                    {{ html_entity_decode(strip_tags($artikel->excerpt), ENT_QUOTES | ENT_HTML5, 'UTF-8') }}
                 </p>
             @endif
 
-            {{-- HTML mentah — disengaja. `content` berasal dari penyunting
-                 WordPress milik organisasi ini sendiri, dan modal ini hanya
-                 dapat dibuka admin ber-permission news.article.view. --}}
+            {{-- Audit keamanan 15 Oktober 2026 (S9): dulu HTML mentah dengan
+                 alasan "penyunting WordPress milik sendiri". Satu situs WP OPD
+                 yang disusupi cukup untuk menjalankan skrip di sesi admin.
+                 Sekarang lewat daftar-izin HTMLPurifier, juga untuk baris lama
+                 yang tersimpan sebelum sanitasi saat sinkron ada. --}}
             <div class="docs-prose dark:text-neutral-300">
-                {!! $artikel->content !!}
+                {!! \Nawasara\News\Services\ArticleHtmlSanitizer::clean($artikel->content) !!}
             </div>
         @endif
 

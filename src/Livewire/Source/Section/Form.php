@@ -55,6 +55,8 @@ class Form extends Component
     #[On('news-source-create')]
     public function create(): void
     {
+        $this->authorize('news.source.create');
+
         $this->resetForm();
         $this->dispatch('modal-open:news-source-form');
     }
@@ -62,6 +64,8 @@ class Form extends Component
     #[On('news-source-edit')]
     public function edit(int $sourceId): void
     {
+        $this->authorize('news.source.update');
+
         $source = Source::findOrFail($sourceId);
 
         $this->sourceId = $source->id;
@@ -87,6 +91,12 @@ class Form extends Component
      */
     public function testConnection(): void
     {
+        // Audit keamanan 15 Oktober 2026 (R9): tanpa gerbang ini siapa pun
+        // yang dapat memanggil komponen membuat server mengambil URL bebas
+        // (SSRF). Izinnya sama dengan menyimpan, karena uji ini bagian dari
+        // mengisi form itu.
+        $this->authorize($this->sourceId ? 'news.source.update' : 'news.source.create');
+
         $this->validateOnly('baseUrl');
 
         try {

@@ -5,6 +5,8 @@ namespace Nawasara\News\Livewire\Source\Section;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Nawasara\AuthPrimitives\Attributes\RequiresSudo;
+use Nawasara\AuthPrimitives\Traits\WithSudo;
 use Nawasara\News\Jobs\SyncNewsJob;
 use Nawasara\News\Models\Source;
 
@@ -16,6 +18,8 @@ use Nawasara\News\Models\Source;
  */
 class Table extends Component
 {
+    use WithSudo;
+
     #[Url]
     public string $search = '';
 
@@ -70,6 +74,11 @@ class Table extends Component
         $this->dispatch('toast', type: 'success', message: "Sinkronisasi {$source->name} dijadwalkan.");
     }
 
+    /**
+     * AGENTS.md §6 (audit keamanan 15 Oktober 2026, S6): menghapus sumber
+     * membuang seluruh artikelnya secara cascade, jadi wajib bersudo.
+     */
+    #[RequiresSudo(reason: 'menghapus sumber berita beserta artikelnya')]
     public function delete(int $sourceId): void
     {
         $this->authorize('news.source.delete');

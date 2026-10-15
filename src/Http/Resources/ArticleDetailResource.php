@@ -4,6 +4,7 @@ namespace Nawasara\News\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Nawasara\News\Services\ArticleHtmlSanitizer;
 
 /**
  * Daftar-izin untuk GET /api/v1/news/articles/{slug}.
@@ -16,8 +17,11 @@ class ArticleDetailResource extends JsonResource
         return [
             'slug' => $this->slug,
             'title' => $this->title,
-            'excerpt' => $this->excerpt,
-            'content' => $this->content,
+            // Dibersihkan juga saat dibaca: baris lama tersimpan sebelum
+            // sanitasi saat sinkron ada (audit keamanan 15 Oktober 2026, S9),
+            // dan aplikasi mobile merendernya di WebView.
+            'excerpt' => ArticleHtmlSanitizer::clean($this->excerpt),
+            'content' => ArticleHtmlSanitizer::clean($this->content),
             'cover_image' => $this->cover_image,
             'link' => $this->link,
             'source' => $this->whenLoaded('source', fn () => [
