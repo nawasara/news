@@ -51,13 +51,28 @@
                 description="Tambahkan situs WordPress pertama, misalnya https://ponorogo.go.id" />
         @endif
     @else
-        <x-nawasara-ui::table :headers="['Nama', 'Alamat', 'Artikel', 'Batas', 'Sinkronisasi Terakhir', 'Status', '']" stickyLast>
+        <x-nawasara-ui::table :headers="['Nama', 'Alamat', 'Artikel', 'Batas', 'Sinkronisasi Terakhir', '']" stickyLast>
             <x-slot:table>
                 @foreach ($sources as $source)
                     <tr wire:key="source-{{ $source->id }}">
                         <td class="px-6 py-4 text-sm text-neutral-700 dark:text-neutral-200">
                             {{ $source->name }}
                             <div class="font-mono text-xs text-neutral-500 dark:text-neutral-400">{{ $source->slug }}</div>
+                            {{-- Status di bawah nama, bukan kolom sendiri: terlihat tanpa menggulir ke kanan. --}}
+                            <div class="mt-1">
+                                @if ($source->isFailing())
+                                    {{-- Kegagalan didahulukan atas aktif/nonaktif: sumber
+                                         yang aktif tetapi gagal terlihat "normal" kalau
+                                         hanya statusnya yang ditampilkan. --}}
+                                    <x-nawasara-ui::badge color="rose">Bermasalah</x-nawasara-ui::badge>
+                                    <div class="text-xs text-rose-600 dark:text-rose-400 mt-1 max-w-xs truncate"
+                                        title="{{ $source->last_error }}">{{ $source->last_error }}</div>
+                                @elseif ($source->is_active)
+                                    <x-nawasara-ui::badge color="emerald">Aktif</x-nawasara-ui::badge>
+                                @else
+                                    <x-nawasara-ui::badge color="neutral">Nonaktif</x-nawasara-ui::badge>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $source->base_url }}
@@ -70,20 +85,6 @@
                         </td>
                         <td class="px-6 py-4 text-xs text-neutral-500 dark:text-neutral-400">
                             {{ $source->last_synced_at?->diffForHumans() ?? 'Belum pernah' }}
-                        </td>
-                        <td class="px-6 py-4 text-sm">
-                            @if ($source->isFailing())
-                                {{-- Kegagalan didahulukan atas aktif/nonaktif: sumber
-                                     yang aktif tetapi gagal terlihat "normal" kalau
-                                     hanya statusnya yang ditampilkan. --}}
-                                <x-nawasara-ui::badge color="rose">Bermasalah</x-nawasara-ui::badge>
-                                <div class="text-xs text-rose-600 dark:text-rose-400 mt-1 max-w-xs truncate"
-                                    title="{{ $source->last_error }}">{{ $source->last_error }}</div>
-                            @elseif ($source->is_active)
-                                <x-nawasara-ui::badge color="emerald">Aktif</x-nawasara-ui::badge>
-                            @else
-                                <x-nawasara-ui::badge color="neutral">Nonaktif</x-nawasara-ui::badge>
-                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                             <x-nawasara-ui::dropdown-menu-action :id="$source->id" :items="[
